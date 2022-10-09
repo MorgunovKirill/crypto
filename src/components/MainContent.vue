@@ -74,7 +74,7 @@
         class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3"
       >
         <div
-          v-for="ticker in filteredList"
+          v-for="ticker in paginatedList"
           :key="ticker"
           class="relative bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
           :class="{ 'ticker-picked': pickedTicker === ticker }"
@@ -107,8 +107,11 @@
         </div>
       </section>
       <hr class="mt-4" />
-      <div class="flex pt-3 justify-between items-center">
-        <div class="text-gray-900">
+      <div
+        v-if="tickers.length"
+        class="sm:flex pt-3 justify-between items-center"
+      >
+        <div class="text-gray-900 mb-4 sm:mb-0">
           Показано
           {{ page * 6 > tickers.length ? tickers.length : page * 6 }}
           результатов из {{ tickers.length }}
@@ -137,7 +140,7 @@
 </template>
 <style src="../assets/app.css" scoped></style>
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watchEffect} from "vue";
 
 const query = ref("");
 const pickedTicker = ref();
@@ -186,21 +189,28 @@ const endIndex = computed(() => {
   return page.value * 6;
 });
 
-const hasNextPage = computed(() => {
-  return filteredList.value.length >= endIndex.value;
+const filteredList = computed(() => {
+  return tickers.value.filter((ticker) =>
+    ticker.name.includes(filter.value.toUpperCase())
+  );
 });
 
-const filteredList = computed(() => {
-  const filteredTickers = tickers.value
-    .filter((ticker) => ticker.name.includes(filter.value.toUpperCase()))
-    .slice(startIndex.value, endIndex.value);
+const paginatedList = computed(() => {
+  return filteredList.value.slice(startIndex.value, endIndex.value);
+});
 
-  return filteredTickers;
+const hasNextPage = computed(() => {
+  return filteredList.value.length > endIndex.value;
 });
 
 const normalizedGraph = computed(() => {
   const maxValue = Math.max(...graph.value);
   const minValue = Math.min(...graph.value);
+
+  if (maxValue === minValue) {
+    return graph.value.map(() => 50);
+  }
+
   return graph.value.map(
     (price) => 5 + ((price - minValue) * 95) / (maxValue - minValue)
   );
@@ -224,7 +234,6 @@ const subscribeToUpdates = (tickerName) => {
 
 const selectTicker = (ticker) => {
   pickedTicker.value = ticker;
-  graph.value = [];
 };
 
 onMounted(() => {
@@ -237,4 +246,18 @@ onMounted(() => {
     });
   }
 });
+
+const watchPageOnDelete = (val) => {
+  if (val.length === 0 && page.value > 1) {
+    page.value -= 1;
+  }
+}
+
+const resetGraph = () => {
+  graph.value = [];
+}
+
+watchEffect(() => watchPageOnDelete(paginatedList.value));
+watchEffect(() => resetGraph(pickedTicker.value));
+
 </script>
