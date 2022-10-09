@@ -61,6 +61,7 @@
           alt="иконка поиск"
         />
         <input
+          v-model="filter"
           type="text"
           name="search"
           class="block w-full max-w-464 pr-10 pl-10 pt-2 pb-2 border border-gray-300 text-gray-900 focus:outline-none focus:ring-gray-500 focus:border-gray-500 sm:text-sm rounded-md"
@@ -72,7 +73,7 @@
         class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3"
       >
         <div
-          v-for="ticker in tickers"
+          v-for="ticker in filteredList()"
           :key="ticker"
           class="relative bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
           :class="{ 'ticker-picked': pickedTicker === ticker }"
@@ -115,6 +116,8 @@ const query = ref("");
 const pickedTicker = ref();
 const tickers = ref([]);
 const graph = ref([]);
+const page = ref(1);
+const filter = ref("");
 
 const addTicker = (val) => {
   if (
@@ -135,6 +138,7 @@ const addTicker = (val) => {
   }
 
   query.value = "";
+  filter.value = "";
 };
 
 const removeTicker = (ticker) => {
@@ -145,6 +149,10 @@ const removeTicker = (ticker) => {
   if (pickedTicker.value === ticker) {
     pickedTicker.value = null;
   }
+};
+
+const filteredList = () => {
+  return tickers.value.filter((ticker) => ticker.name.includes(filter.value.toUpperCase()));
 };
 
 const subscribeToUpdates = (tickerName) => {
@@ -181,7 +189,7 @@ onMounted(() => {
 
   if (tickersData) {
     tickers.value = JSON.parse(tickersData);
-    tickers.value.forEach((el, i) => {
+    tickers.value.forEach((el) => {
       subscribeToUpdates(el.name);
     });
   }
