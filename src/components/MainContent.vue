@@ -74,7 +74,7 @@
         class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3"
       >
         <div
-          v-for="ticker in filteredList()"
+          v-for="ticker in filteredList"
           :key="ticker"
           class="relative bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
           :class="{ 'ticker-picked': pickedTicker === ticker }"
@@ -99,7 +99,7 @@
       <section v-if="pickedTicker" class="relative mt-4">
         <div class="flex bg-white p-5 rounded-lg items-end h-64">
           <div
-            v-for="(bar, idx) in normalizeGraph()"
+            v-for="(bar, idx) in normalizedGraph"
             :key="idx"
             :style="{ height: `${bar}%` }"
             class="bg-yellow-500 border w-8 h-24"
@@ -108,7 +108,11 @@
       </section>
       <hr class="mt-4" />
       <div class="flex pt-3 justify-between items-center">
-        <div class="text-gray-900">Показано {{page * 6 > tickers.length ? tickers.length : page * 6 }} результатов из {{tickers.length}}</div>
+        <div class="text-gray-900">
+          Показано
+          {{ page * 6 > tickers.length ? tickers.length : page * 6 }}
+          результатов из {{ tickers.length }}
+        </div>
         <div class="flex">
           <button
             v-if="page > 1"
@@ -133,7 +137,7 @@
 </template>
 <style src="../assets/app.css" scoped></style>
 <script setup>
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 
 const query = ref("");
 const pickedTicker = ref();
@@ -141,7 +145,6 @@ const tickers = ref([]);
 const graph = ref([]);
 const page = ref(1);
 const filter = ref("");
-const hasNextPage = ref(false);
 
 const addTicker = (val) => {
   if (
@@ -175,18 +178,33 @@ const removeTicker = (ticker) => {
   }
 };
 
-const filteredList = () => {
-  const start = (page.value - 1) * 6;
-  const end = page.value * 6;
+const startIndex = computed(() => {
+  return (page.value - 1) * 6;
+});
 
+const endIndex = computed(() => {
+  return page.value * 6;
+});
+
+const hasNextPage = computed(() => {
+  return filteredList.value.length >= endIndex.value;
+});
+
+const filteredList = computed(() => {
   const filteredTickers = tickers.value
     .filter((ticker) => ticker.name.includes(filter.value.toUpperCase()))
-    .slice(start, end);
-
-  hasNextPage.value = filteredTickers.length >= end;
+    .slice(startIndex.value, endIndex.value);
 
   return filteredTickers;
-};
+});
+
+const normalizedGraph = computed(() => {
+  const maxValue = Math.max(...graph.value);
+  const minValue = Math.min(...graph.value);
+  return graph.value.map(
+    (price) => 5 + ((price - minValue) * 95) / (maxValue - minValue)
+  );
+});
 
 const subscribeToUpdates = (tickerName) => {
   setInterval(async () => {
@@ -204,14 +222,6 @@ const subscribeToUpdates = (tickerName) => {
   }, 3000);
 };
 
-const normalizeGraph = () => {
-  const maxValue = Math.max(...graph.value);
-  const minValue = Math.min(...graph.value);
-  return graph.value.map(
-    (price) => 5 + ((price - minValue) * 95) / (maxValue - minValue)
-  );
-};
-
 const selectTicker = (ticker) => {
   pickedTicker.value = ticker;
   graph.value = [];
@@ -227,5 +237,4 @@ onMounted(() => {
     });
   }
 });
-
 </script>
