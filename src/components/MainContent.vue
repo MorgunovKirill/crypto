@@ -35,11 +35,13 @@
             >
             <div class="relative rounded-md shadow-md">
               <input
+                v-model="query"
                 type="text"
                 name="wallet"
                 id="wallet"
                 class="block w-full pt-6 pr-10 border border-gray-300 text-gray-900 focus:outline-none focus:ring-gray-500 focus:border-gray-500 sm:text-sm rounded-md"
                 placeholder="Например DOGE"
+                @keypress.enter="addTicker(query)"
               />
             </div>
           </div>
@@ -47,6 +49,7 @@
         <button
           type="button"
           class="inline-flex items-center mt-3 py-3 px-6 border border-transparent shadow-sm text-base leading-4 font-medium rounded text-white bg-purple-800 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+          @click="addTicker(query)"
         >
           Добавить
         </button>
@@ -64,78 +67,100 @@
           placeholder="Найти тикер"
         />
       </div>
-      <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
+      <dl
+        v-if="tickers.length"
+        class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3"
+      >
         <div
+          v-for="ticker in tickers"
+          :key="ticker"
           class="relative bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
+          :class="{ 'ticker-picked': pickedTicker === ticker }"
+          @click="pickedTicker = ticker"
         >
           <div class="py-4 px-5">
-            <dt class="text-sm font-medium text-gray-700 truncate">ETH</dt>
+            <dt class="text-sm font-medium text-gray-700 truncate">
+              {{ ticker.name }}
+            </dt>
             <dd class="text-4xl leading-9 font-semibold text-gray-900">
-              1.11$
+              {{ ticker.price }} $
             </dd>
           </div>
           <button
             class="absolute top-18 right-23 z-10 flex items-center justify-center font-medium text-gray-500 hover:text-gray-600 hover:bg-gray-200 hover:opacity-20 transition-all focus:outline-none"
-          >
-            <img src="../assets/icon-delete.svg" alt="удалить тикер" />
-          </button>
-        </div>
-        <div
-          class="relative bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
-        >
-          <div class="py-4 px-5">
-            <dt class="text-sm font-medium text-gray-700 truncate">ETH</dt>
-            <dd class="text-4xl leading-9 font-semibold text-gray-900">
-              1.11$
-            </dd>
-          </div>
-          <button
-            class="absolute top-18 right-23 z-10 flex items-center justify-center font-medium text-gray-500 hover:text-gray-600 hover:bg-gray-200 hover:opacity-20 transition-all focus:outline-none"
-          >
-            <img src="../assets/icon-delete.svg" alt="удалить тикер" />
-          </button>
-        </div>
-        <div
-          class="relative bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
-        >
-          <div class="py-4 px-5">
-            <dt class="text-sm font-medium text-gray-700 truncate">ETH</dt>
-            <dd class="text-4xl leading-9 font-semibold text-gray-900">
-              1.11$
-            </dd>
-          </div>
-          <button
-            class="absolute top-18 right-23 z-10 flex items-center justify-center font-medium text-gray-500 hover:text-gray-600 hover:bg-gray-200 hover:opacity-20 transition-all focus:outline-none"
-          >
-            <img src="../assets/icon-delete.svg" alt="удалить тикер" />
-          </button>
-        </div>
-        <div
-          class="relative bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
-        >
-          <div class="py-4 px-5">
-            <dt class="text-sm font-medium text-gray-700 truncate">ETH</dt>
-            <dd class="text-4xl leading-9 font-semibold text-gray-900">
-              1.11$
-            </dd>
-          </div>
-          <button
-            class="absolute top-18 right-23 z-10 flex items-center justify-center font-medium text-gray-500 hover:text-gray-600 hover:bg-gray-200 hover:opacity-20 transition-all focus:outline-none"
+            @click.stop="removeTicker(ticker)"
           >
             <img src="../assets/icon-delete.svg" alt="удалить тикер" />
           </button>
         </div>
       </dl>
-      <hr class="w-full border-t border-gray-600 my-4" />
-      <section class="relative">
+      <section v-if="pickedTicker" class="relative mt-4">
         <div class="flex bg-white p-5 rounded-lg items-end h-64">
-          <div class="bg-yellow-500 border w-8 h-24"></div>
-          <div class="bg-yellow-500 border w-8 h-32"></div>
-          <div class="bg-yellow-500 border w-8 h-48"></div>
-          <div class="bg-yellow-500 border w-8 h-16"></div>
+          <div
+            v-for="(bar, idx) in normalizeGraph()"
+            :key="idx"
+            :style="{ height: `${bar}%` }"
+            class="bg-yellow-500 border w-8 h-24"
+          ></div>
         </div>
       </section>
     </div>
   </div>
 </template>
 <style src="../assets/app.css" scoped></style>
+<script setup>
+import { ref } from "vue";
+
+const query = ref("");
+const pickedTicker = ref();
+const tickers = ref([]);
+const graph = ref([]);
+
+const addTicker = (val) => {
+  if (
+    val !== "" &&
+    !tickers.value.some((el) => {
+      return el.name === val;
+    })
+  ) {
+    const newTicker = { name: val.toUpperCase(), price: "-" };
+    tickers.value.push(newTicker);
+    pickedTicker.value = newTicker;
+
+    setInterval(async () => {
+      const f = await fetch(
+        `https://min-api.cryptocompare.com/data/price?fsym=${newTicker.name}&tsyms=USD&api_key=91d258e61c3a806be8ce7c2f5c859a5047d6b20fe587ac8d18161dc1eba0f4ee`
+      );
+      const data = await f.json();
+      console.log(data);
+      newTicker.price = data.USD;
+      tickers.value.find((t) => t.name === newTicker.name).price =
+        data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
+
+      if (pickedTicker.value.name === newTicker.name) {
+        graph.value.push(data.USD);
+      }
+    }, 3000);
+  }
+
+  query.value = "";
+};
+
+const removeTicker = (ticker) => {
+  tickers.value = tickers.value.filter((el) => {
+    return el.name !== ticker.name;
+  });
+
+  if (pickedTicker.value === ticker) {
+    pickedTicker.value = null;
+  }
+};
+
+const normalizeGraph = () => {
+  const maxValue = Math.max(...graph.value);
+  const minValue = Math.min(...graph.value);
+  return graph.value.map(
+    (price) => 5 + ((price - minValue) * 95) / (maxValue - minValue)
+  );
+};
+</script>
