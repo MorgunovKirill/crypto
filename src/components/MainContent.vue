@@ -140,7 +140,8 @@
 </template>
 <style src="../assets/app.css" scoped></style>
 <script setup>
-import { computed, onMounted, ref, watchEffect} from "vue";
+import { computed, onMounted, ref, watchEffect } from "vue";
+import { loadTicker } from "../api/api.js";
 
 const query = ref("");
 const pickedTicker = ref();
@@ -158,7 +159,7 @@ const addTicker = (val) => {
   ) {
     const newTicker = { name: val.toUpperCase(), price: "-" };
 
-    tickers.value.push(newTicker);
+    tickers.value = [...tickers.value, newTicker];
 
     localStorage.setItem("cryptolist", JSON.stringify(tickers.value));
 
@@ -218,11 +219,8 @@ const normalizedGraph = computed(() => {
 
 const subscribeToUpdates = (tickerName) => {
   setInterval(async () => {
-    const f = await fetch(
-      `https://min-api.cryptocompare.com/data/price?fsym=${tickerName}&tsyms=USD&api_key=91d258e61c3a806be8ce7c2f5c859a5047d6b20fe587ac8d18161dc1eba0f4ee`
-    );
-    const data = await f.json();
-
+    const data = await loadTicker(tickerName);
+    
     tickers.value.find((t) => t.name === tickerName).price =
       data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
 
@@ -251,13 +249,12 @@ const watchPageOnDelete = (val) => {
   if (val.length === 0 && page.value > 1) {
     page.value -= 1;
   }
-}
+};
 
 const resetGraph = () => {
   graph.value = [];
-}
+};
 
 watchEffect(() => watchPageOnDelete(paginatedList.value));
 watchEffect(() => resetGraph(pickedTicker.value));
-
 </script>
