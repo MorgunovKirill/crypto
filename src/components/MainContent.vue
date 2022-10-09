@@ -149,6 +149,7 @@ const tickers = ref([]);
 const graph = ref([]);
 const page = ref(1);
 const filter = ref("");
+const interval = ref()
 
 const addTicker = (val) => {
   if (
@@ -179,6 +180,7 @@ const removeTicker = (ticker) => {
 
   if (pickedTicker.value === ticker) {
     pickedTicker.value = null;
+    clearInterval(interval.value);
   }
 };
 
@@ -218,9 +220,9 @@ const normalizedGraph = computed(() => {
 });
 
 const subscribeToUpdates = (tickerName) => {
-  setInterval(async () => {
+  interval.value = setInterval(async () => {
     const data = await loadTicker(tickerName);
-    
+
     tickers.value.find((t) => t.name === tickerName).price =
       data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
 
