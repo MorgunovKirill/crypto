@@ -62,6 +62,7 @@
         />
         <input
           v-model="filter"
+          @input="page = 1"
           type="text"
           name="search"
           class="block w-full max-w-464 pr-10 pl-10 pt-2 pb-2 border border-gray-300 text-gray-900 focus:outline-none focus:ring-gray-500 focus:border-gray-500 sm:text-sm rounded-md"
@@ -107,7 +108,7 @@
       </section>
       <hr class="mt-4" />
       <div class="flex pt-3 justify-between items-center">
-        <div class="text-gray-900">Показано 6 результатов из 10</div>
+        <div class="text-gray-900">Показано {{page * 6 > tickers.length ? tickers.length : page * 6 }} результатов из {{tickers.length}}</div>
         <div class="flex">
           <button
             v-if="page > 1"
@@ -132,7 +133,7 @@
 </template>
 <style src="../assets/app.css" scoped></style>
 <script setup>
-import { onMounted, ref, watchEffect } from "vue";
+import { onMounted, ref } from "vue";
 
 const query = ref("");
 const pickedTicker = ref();
@@ -227,9 +228,4 @@ onMounted(() => {
   }
 });
 
-const clearFilter = (val) => {
-  if (val) page.value = 1;
-};
-
-watchEffect(() => clearFilter(filter.value));
 </script>
