@@ -76,7 +76,7 @@
           :key="ticker"
           class="relative bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer"
           :class="{ 'ticker-picked': pickedTicker === ticker }"
-          @click="pickedTicker = ticker"
+          @click="selectTicker(ticker)"
         >
           <div class="py-4 px-5">
             <dt class="text-sm font-medium text-gray-700 truncate">
@@ -109,7 +109,7 @@
 </template>
 <style src="../assets/app.css" scoped></style>
 <script setup>
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 
 const query = ref("");
 const pickedTicker = ref();
@@ -124,23 +124,14 @@ const addTicker = (val) => {
     })
   ) {
     const newTicker = { name: val.toUpperCase(), price: "-" };
+
     tickers.value.push(newTicker);
-    pickedTicker.value = newTicker;
 
-    setInterval(async () => {
-      const f = await fetch(
-        `https://min-api.cryptocompare.com/data/price?fsym=${newTicker.name}&tsyms=USD&api_key=91d258e61c3a806be8ce7c2f5c859a5047d6b20fe587ac8d18161dc1eba0f4ee`
-      );
-      const data = await f.json();
-      console.log(data);
-      newTicker.price = data.USD;
-      tickers.value.find((t) => t.name === newTicker.name).price =
-        data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
+    localStorage.setItem("cryptolist", JSON.stringify(tickers.value));
 
-      if (pickedTicker.value.name === newTicker.name) {
-        graph.value.push(data.USD);
-      }
-    }, 3000);
+    selectTicker(newTicker);
+
+    subscribeToUpdates(newTicker.name);
   }
 
   query.value = "";
@@ -156,6 +147,22 @@ const removeTicker = (ticker) => {
   }
 };
 
+const subscribeToUpdates = (tickerName) => {
+  setInterval(async () => {
+    const f = await fetch(
+      `https://min-api.cryptocompare.com/data/price?fsym=${tickerName}&tsyms=USD&api_key=91d258e61c3a806be8ce7c2f5c859a5047d6b20fe587ac8d18161dc1eba0f4ee`
+    );
+    const data = await f.json();
+
+    tickers.value.find((t) => t.name === tickerName).price =
+      data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
+
+    if (pickedTicker?.value?.name === tickerName) {
+      graph.value.push(data.USD);
+    }
+  }, 3000);
+};
+
 const normalizeGraph = () => {
   const maxValue = Math.max(...graph.value);
   const minValue = Math.min(...graph.value);
@@ -163,4 +170,20 @@ const normalizeGraph = () => {
     (price) => 5 + ((price - minValue) * 95) / (maxValue - minValue)
   );
 };
+
+const selectTicker = (ticker) => {
+  pickedTicker.value = ticker;
+  graph.value = [];
+};
+
+onMounted(() => {
+  const tickersData = localStorage.getItem("cryptolist");
+
+  if (tickersData) {
+    tickers.value = JSON.parse(tickersData);
+    tickers.value.forEach((el, i) => {
+      subscribeToUpdates(el.name);
+    });
+  }
+});
 </script>
