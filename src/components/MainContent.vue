@@ -105,12 +105,34 @@
           ></div>
         </div>
       </section>
+      <hr class="mt-4" />
+      <div class="flex pt-3 justify-between items-center">
+        <div class="text-gray-900">Показано 6 результатов из 10</div>
+        <div class="flex">
+          <button
+            v-if="page > 1"
+            @click="page = page - 1"
+            type="button"
+            class="inline-flex items-center mr-4 py-3 px-6 border border-transparent shadow-sm text-gray-900 text-base leading-4 font-medium rounded bg-white hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+          >
+            Назад
+          </button>
+          <button
+            v-if="hasNextPage"
+            @click="page = page + 1"
+            type="button"
+            class="inline-flex items-center py-3 px-6 border border-transparent shadow-sm text-gray-900 text-base leading-4 font-medium rounded bg-white hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+          >
+            Вперед
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 <style src="../assets/app.css" scoped></style>
 <script setup>
-import { onMounted, ref } from "vue";
+import { onMounted, ref, watchEffect } from "vue";
 
 const query = ref("");
 const pickedTicker = ref();
@@ -118,6 +140,7 @@ const tickers = ref([]);
 const graph = ref([]);
 const page = ref(1);
 const filter = ref("");
+const hasNextPage = ref(false);
 
 const addTicker = (val) => {
   if (
@@ -152,7 +175,16 @@ const removeTicker = (ticker) => {
 };
 
 const filteredList = () => {
-  return tickers.value.filter((ticker) => ticker.name.includes(filter.value.toUpperCase()));
+  const start = (page.value - 1) * 6;
+  const end = page.value * 6;
+
+  const filteredTickers = tickers.value
+    .filter((ticker) => ticker.name.includes(filter.value.toUpperCase()))
+    .slice(start, end);
+
+  hasNextPage.value = filteredTickers.length >= end;
+
+  return filteredTickers;
 };
 
 const subscribeToUpdates = (tickerName) => {
@@ -194,4 +226,10 @@ onMounted(() => {
     });
   }
 });
+
+const clearFilter = (val) => {
+  if (val) page.value = 1;
+};
+
+watchEffect(() => clearFilter(filter.value));
 </script>
